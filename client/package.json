@@ -1,0 +1,23 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "Describe client here",
+  "private": true,
+  "scripts": {
+    "build": "nwb build-web-app",
+    "clean": "nwb clean-app",
+    "start": "nwb serve-web-app --port 3003 --reload",
+    "test": "nwb test",
+    "test:coverage": "nwb test --coverage",
+    "test:watch": "nwb test --server"
+  },
+  "dependencies": {
+    "nipplejs": "^0.6.8"
+  },
+  "devDependencies": {
+    "nwb": "0.21.x"
+  },
+  "author": "",
+  "license": "MIT",
+  "repository": ""
+}

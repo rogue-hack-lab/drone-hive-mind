@@ -40,7 +40,8 @@ window.onload = function () {
         };
 
         conn.onmessage = function (event) {
-            // right now this is just receiving back all messages from all clients
+            // no messages expected yet
+            
         };
     } else {
         var item = document.createElement("div");

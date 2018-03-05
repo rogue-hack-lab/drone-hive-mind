@@ -2,8 +2,7 @@ all: installtools build
 
 installtools:
 	go get -u github.com/codegangsta/gin
-	go get -u github.com/kevinburke/go-bindata
-	go get -u github.com/gorilla/websocket
+	go get -u github.com/kevinburke/go-bindata/...
 
 build-client:
 	cd ../client; \

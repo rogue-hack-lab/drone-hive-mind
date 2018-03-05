@@ -2,6 +2,13 @@
 
 [Golang](https://golang.org/) >= v1.6 must be installed.
 
+Then export GOPATH too the root folder of your Go projects and append to PATH the GOPATH/bin.
+```
+#EXAMPLE
+export GOPATH=$HOME/projects/Go
+export PATH=$PATH:GOPATH/bin
+```
+
 ## Installation
 
 - Run `go get github.com/rogue-hack-lab/drone-hive-mind` to fetch the project

@@ -74,7 +74,10 @@ func (c *Client) readPump() {
 		// c.hub.broadcast <- message
 		if err := json.Unmarshal(message, c.Controls); err != nil {
 			fmt.Printf("error unmarshaling json: %v", err)
+		}else{
+			c.Controls.LastUpdate = time.Now()
 		}
+
 	}
 }
 

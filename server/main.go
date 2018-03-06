@@ -14,13 +14,18 @@ import (
 )
 
 type Controls struct {
-	Throttle      float64 `json:"t"`
-	Rudder        float64 `json:"r"`
-	Aileron       float64 `json:"a"`
-	Elevator      float64 `json:"e"`
-	LastUpdate    time.Time
+	Throttle   float64 `json:"t"`
+	Rudder     float64 `json:"r"`
+	Aileron    float64 `json:"a"`
+	Elevator   float64 `json:"e"`
+	LastUpdate time.Time
+	Running    bool
+}
+
+type Meta struct {
 	Clients       int
 	ActiveClients int
+	Running       bool
 }
 
 var addr = flag.String("addr", ":3001", "http service address")
@@ -40,44 +45,57 @@ func static_handler(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func serveControls(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL)
-
-	ctrl := &Controls{
-		Throttle:   0,
-		Rudder:     0,
-		Aileron:    0,
-		Elevator:   0,
-		LastUpdate: time.Time{},
-		Clients:    0,
+func servePrivate(hub *Hub, meta *Meta, w http.ResponseWriter, r *http.Request) {
+	log.Println(r.URL.Path)
+	switch r.URL.Path {
+	case "/pvt/c":
+		if err := json.NewEncoder(w).Encode(getControls(hub, meta)); err != nil {
+			fmt.Printf("error marshaling json: %v", err)
+		}
+	case "/pvt/start":
+		meta.Running = true
+		fmt.Fprintf(w, "drones starting")
+	case "/pvt/stop":
+		meta.Running = false
+		fmt.Fprintf(w, "drones stoping")
 	}
+}
+
+func getControls(hub *Hub, meta *Meta) Controls {
+	ctrl := Controls{}
 
 	i := float64(0)
-	for c := range hub.clients {
-		if time.Now().Sub(c.Controls.LastUpdate) < (time.Duration(*clientTimeout) * time.Second) {
-			ctrl.Throttle += c.Controls.Throttle
-			ctrl.Rudder += c.Controls.Rudder
-			ctrl.Aileron += c.Controls.Aileron
-			ctrl.Elevator += c.Controls.Elevator
-			if c.Controls.LastUpdate.After(ctrl.LastUpdate) {
-				ctrl.LastUpdate = c.Controls.LastUpdate
+	if meta.Running {
+		for c := range hub.clients {
+			if time.Now().Sub(c.Controls.LastUpdate) < (time.Duration(*clientTimeout) * time.Second) {
+				ctrl.Throttle += c.Controls.Throttle
+				ctrl.Rudder += c.Controls.Rudder
+				ctrl.Aileron += c.Controls.Aileron
+				ctrl.Elevator += c.Controls.Elevator
+				if c.Controls.LastUpdate.After(ctrl.LastUpdate) {
+					ctrl.LastUpdate = c.Controls.LastUpdate
+				}
+				i++
 			}
-			i++
+		}
+		if i > 0 {
+			ctrl.Throttle = ctrl.Throttle / i
+			ctrl.Rudder = ctrl.Rudder / i
+			ctrl.Aileron = ctrl.Aileron / i
+			ctrl.Elevator = ctrl.Elevator / i
+			meta.ActiveClients = int(i)
+		}
+	} else {
+		ctrl = Controls{
+			Rudder:   0.5,
+			Aileron:  0.5,
+			Elevator: 0.5,
 		}
 	}
-	if i > 0 {
-		ctrl.Throttle = ctrl.Throttle / i
-		ctrl.Rudder = ctrl.Rudder / i
-		ctrl.Aileron = ctrl.Aileron / i
-		ctrl.Elevator = ctrl.Elevator / i
-		ctrl.ActiveClients = int(i)
-	}
-	ctrl.Clients = len(hub.clients)
+	meta.Clients = len(hub.clients)
+	ctrl.Running = meta.Running
 
-	if err := json.NewEncoder(w).Encode(ctrl); err != nil {
-		fmt.Printf("error marshaling json: %v", err)
-	}
-	log.Printf("clients: %v", len(hub.clients))
+	return ctrl
 }
 
 func main() {
@@ -85,10 +103,16 @@ func main() {
 	hub := newHub()
 	go hub.run()
 
+	var meta = &Meta{
+		Clients:       0,
+		ActiveClients: 0,
+		Running:       false,
+	}
+
 	http.Handle("/", http.StripPrefix("/", http.HandlerFunc(static_handler)))
 
-	http.HandleFunc("/c", func(w http.ResponseWriter, r *http.Request) {
-		serveControls(hub, w, r)
+	http.HandleFunc("/pvt/", func(w http.ResponseWriter, r *http.Request) {
+		servePrivate(hub, meta, w, r)
 	})
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

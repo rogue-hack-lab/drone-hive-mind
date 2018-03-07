@@ -1,7 +1,9 @@
 import * as d3 from "d3";
 import * as transition from "d3-transition";
 import debounce from 'lodash/debounce';
-console.log('debounce', debounce);
+import throttle from 'lodash/throttle';
+import lockr from 'lockr';
+
 let app = document.querySelector('#app');
 
 app.innerHTML = '<div id="log"></div><div id="controls"></div>';
@@ -11,49 +13,53 @@ window.onload = function () {
     const width = 300;
     const height = width;
 
-    const calibrateScale = (inputX, inputY) => {
-        return {
-            x: inputX/width,
-            y: inputY/height
-        };
+    const calibrateScale = (controlName, inputX, inputY) => {
+      const returnObj = {
+        controlName: controlName,
+        x: inputX/width,
+        y: inputY/height
+      }
+      return returnObj;
     }
 
-    const memoizeAndSendPoints = (leftFunc, rightFunc) => {
-        let leftCache = {};
-        let rightCache = {};
-        return (...args) => {
-            let n1 = args[0];
-            let n2 = args[1];
-            // here I want to check which args have just left, just right, or both 
-            if(n1 && n2) {
-                // check if either set of values changed
-                if(n1 in leftCache && n2 in rightCache) {
-                    return;
-                } else return sendPoints(n1.y, n1.x, n2.x, n2.y);
-            } else if (n1 && !n2) {
-                if(n2 in rightCache) {
-                    sendPoints(n1.y, n1.x, rightCache[n2.x], rightCache[n2.y]);
-                }
-                // check if n1 changed and use cached n2
-            } else if (n2 && !n1) {
-                // check if n2 changed and use cached n1
-            };
+    const memoizeAndSendPoints = (derivedDataFunction) => {
 
-            if (n in cache) {
-                return sendPoints(cache[n]);
-            }
-            else {
-                console.log('result changed therefore dispatch');
-                let result = fn(n);
-                console.log('result', result);
-                cache[n] = result;
-                // we should debounce in sendPoints
-                return sendPoints(result);
-            }
+        return (...args) => {
+            const controlName = args[0];
+            const x = args[1];
+            const y = args[2];
+            const leftCache = lockr.get('left-cache') || { x: .5, y: .5};
+            const rightCache = lockr.get('right-cache') || { x: .5, y: .5};
+            if (controlName === 'left') {
+                throttle(sendPoints, 200, { 'trailing': false })
+                if(x + ' ' + y !==  leftCache.x + ' ' + leftCache.y) {
+                  const leftObj = {
+                    x: x,
+                    y: y
+                  }
+                  lockr.set('left-cache', leftObj);
+                  sendPoints(y, x, rightCache.x, rightCache.y);
+                } else {
+                  return;
+                };
+            } else if (controlName === 'right') {
+              throttle(sendPoints, 200, { 'trailing': false })
+              if(x + ' ' + y !==  rightCache.x + ' ' + rightCache.y) {
+                const rightObj = {
+                  x: x,
+                  y: y
+                }
+                lockr.set('right-cache', rightObj);
+                sendPoints(leftCache.y, leftCache.x, x, y);
+              } else {
+                return;
+              };
+            };
         }
     }
 
-    const memoizedCalibratedScale = memoizeAndSendPoints(calibrateScale);
+    const memoizedCalibratedScaleLeft = memoizeAndSendPoints(calibrateScale);
+    const memoizedCalibratedScaleRight = memoizeAndSendPoints(calibrateScale);
 
   function dragstarted() {
     this.parentNode.appendChild(this);
@@ -64,15 +70,12 @@ window.onload = function () {
   }
 
   function draggedLeft(d) {
-    const x = memoizedCalibratedScale(d[0]);
-    const y = memoizedCalibratedScale(d[1]);
-    memoizedCalibratedScale()
-    console.log('left', d);
+    memoizedCalibratedScaleLeft('left', d[0], d[1]);
     dragged(d, this);
   }
 
   function draggedRight(d) {
-    console.log('right', d);
+    memoizedCalibratedScaleRight('right', d[0], d[1]);
     dragged(d, this);
   }
 
@@ -169,10 +172,10 @@ window.onload = function () {
     }
 // what is the expected default or null for each? or do I have to include all 4 on every disp
 // just dont send data is my thought... but I will add defaults
-// so if I'm only changing throttle and rudder, what do I send 
+// so if I'm only changing throttle and rudder, what do I send
 // you need to keep sending the other values - whatever it was reading last
 // ah, so do the cached values ... got it, going back to the memoize func
-function sendPoints(throttle,rudder,aileron,elevator) {
+function sendPoints(throttle, rudder, aileron, elevator) {
         var controls = {
             t: throttle, //left stick up down (y) 0
             r: rudder,   //left stick left right (x) 0.5

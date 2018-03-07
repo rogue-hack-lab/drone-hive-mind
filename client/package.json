@@ -14,7 +14,9 @@
   "dependencies": {
     "d3": "^4.13.0",
     "d3-transition": "^1.1.1",
-    "lodash.debounce": "^4.0.8"
+    "lockr": "^0.8.4",
+    "lodash.debounce": "^4.0.8",
+    "lodash.throttle": "^4.1.1"
   },
   "devDependencies": {
     "nwb": "0.21.x"

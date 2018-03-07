@@ -13,25 +13,15 @@ window.onload = function () {
     const width = 300;
     const height = width;
 
-    const calibrateScale = (controlName, inputX, inputY) => {
-      const returnObj = {
-        controlName: controlName,
-        x: inputX/width,
-        y: inputY/height
-      }
-      return returnObj;
-    }
-
     const memoizeAndSendPoints = (derivedDataFunction) => {
 
         return (...args) => {
             const controlName = args[0];
-            const x = args[1];
-            const y = args[2];
-            const leftCache = lockr.get('left-cache') || { x: .5, y: .5};
+            const x = args[1]/width;
+            const y = args[2]/height;
+            const leftCache = lockr.get('left-cache') || { x: .5, y: 0};
             const rightCache = lockr.get('right-cache') || { x: .5, y: .5};
             if (controlName === 'left') {
-                throttle(sendPoints, 200, { 'trailing': false })
                 if(x + ' ' + y !==  leftCache.x + ' ' + leftCache.y) {
                   const leftObj = {
                     x: x,
@@ -43,7 +33,6 @@ window.onload = function () {
                   return;
                 };
             } else if (controlName === 'right') {
-              throttle(sendPoints, 200, { 'trailing': false })
               if(x + ' ' + y !==  rightCache.x + ' ' + rightCache.y) {
                 const rightObj = {
                   x: x,
@@ -58,8 +47,8 @@ window.onload = function () {
         }
     }
 
-    const memoizedCalibratedScaleLeft = memoizeAndSendPoints(calibrateScale);
-    const memoizedCalibratedScaleRight = memoizeAndSendPoints(calibrateScale);
+    const memoizedCalibratedScaleLeft = memoizeAndSendPoints();
+    const memoizedCalibratedScaleRight = memoizeAndSendPoints();
 
   function dragstarted() {
     this.parentNode.appendChild(this);

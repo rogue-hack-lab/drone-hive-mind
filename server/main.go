@@ -28,8 +28,8 @@ type Meta struct {
 	Running       bool
 }
 
-var addr = flag.String("addr", ":3001", "http service address")
-var clientTimeout = flag.Int("timeout", 5, "time in seconds to keep client active before removing data from average")
+var addr = flag.String("addr", ":80", "http service address")
+var clientTimeout = flag.Int("timeout", 3, "time in seconds to keep client active before removing data from average")
 
 func static_handler(rw http.ResponseWriter, req *http.Request) {
 	var path string = req.URL.Path
@@ -86,11 +86,10 @@ func getControls(hub *Hub, meta *Meta) Controls {
 			meta.ActiveClients = int(i)
 		}
 	} else {
-		ctrl = Controls{
-			Rudder:   0.5,
-			Aileron:  0.5,
-			Elevator: 0.5,
-		}
+		ctrl.Throttle += 0.0001
+		ctrl.Rudder += 0.5
+		ctrl.Aileron += 0.5
+		ctrl.Elevator += 0.5
 	}
 	meta.Clients = len(hub.clients)
 	ctrl.Running = meta.Running

@@ -18,7 +18,7 @@ window.onload = function () {
         return (...args) => {
             const controlName = args[0];
             const x = args[1]/width;
-            const y = args[2]/height;
+            const y = 1-(args[2]/height);
             const leftCache = lockr.get('left-cache') || { x: .5, y: 0};
             const rightCache = lockr.get('right-cache') || { x: .5, y: .5};
             if (controlName === 'left') {
